@@ -8,8 +8,8 @@ Process.iterator(create iterator)
 io.iterator(acquire resource)(create iterator from resource)(release resource)
 ```
 
-There are versions for scalaz-stream 0.7.2 and 0.7.2a, Scala 2.10 and 2.11. Remove the "a" suffix from the version if you use scalaz 7.0.x.
+There are versions for scalaz-stream 0.7.3 and 0.7.3a, Scala 2.10 and 2.11. Remove the "a" suffix from the version if you use scalaz 7.0.x.
 
 ```scala
-"me.jeffshaw.scalaz.stream" %% "iterator" % "1.0a"
+"me.jeffshaw.scalaz.stream" %% "iterator" % "2.0a"
 ```

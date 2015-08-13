@@ -42,7 +42,20 @@ class IteratorConstructorsSpec
 
     def isReleased: Boolean = released
 
-    def iterator: Iterator[T] = items.iterator
+    val iterator: Iterator[T] = new Iterator[T] {
+      val inner = items.iterator
+      override def hasNext: Boolean = {
+        ! isReleased && inner.hasNext
+      }
+
+      override def next(): T = {
+        if (isReleased) {
+          throw new Exception("resource was released")
+        } else {
+          inner.next()
+        }
+      }
+    }
   }
 
   test("io.iterator releases its resource") {
@@ -71,6 +84,66 @@ class IteratorConstructorsSpec
       io.iterator(acquire())(createIterator)(release).run.run
 
       assert(isReleased)
+    }
+  }
+
+  case class IteratorsResource[T](sequences: Seq[T]*) {
+    private var released: Boolean = false
+
+    def release(): Unit = {
+      released = true
+    }
+
+    def isReleased: Boolean = released
+
+    val iterators: Iterable[Iterator[T]] =
+      sequences.map { items =>
+        new Iterator[T] {
+          val inner = items.iterator
+
+          override def hasNext: Boolean = {
+            !isReleased && inner.hasNext
+          }
+
+          override def next(): T = {
+            if (isReleased) {
+              throw new Exception("resource was released")
+            } else {
+              inner.next()
+            }
+          }
+        }
+      }
+  }
+
+  test("io.iterators releases its resoures") {
+    forAll { (ints: Vector[Vector[Int]]) =>
+      var isReleased: Boolean = false
+
+      def acquire(): Task[IteratorsResource[Int]] = {
+        Task.delay {
+          IteratorsResource(ints: _*)
+        }
+      }
+
+      def release(resource: IteratorsResource[_]): Task[Unit] = {
+        Task.delay {
+          resource.release()
+          isReleased = resource.isReleased
+        }
+      }
+
+      def createIterators(resource: IteratorsResource[Int]): Task[Iterable[Iterator[Int]]] = {
+        Task.delay {
+          resource.iterators
+        }
+      }
+
+      val results = io.iterators(acquire())(createIterators)(release).runLog.run
+
+      assert(isReleased)
+
+      assertResult(ints.flatten.toSet)(results.toSet)
     }
   }
 

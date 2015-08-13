@@ -1,7 +1,7 @@
 package me.jeffshaw.scalaz.stream
 
 import scalaz.concurrent.Task
-import scalaz.stream.Process
+import scalaz.stream._
 import me.jeffshaw.scalaz.stream.IteratorConstructors._
 
 object ProcessIoIteratorConstructors {
@@ -26,18 +26,36 @@ object ProcessIoIteratorConstructors {
    *
    * Use `merge.mergeN` on the result to interleave the iterators, or
    * .flatMap(identity) to emit them in order.
+   *
+   * @param maxOpen Max number of open (running) processes at a time
    */
   def iterators[R, O](
-    acquire: Task[R]
+    maxOpen: Int
+  )(acquire: Task[R]
   )(createIterators: R => Task[Iterable[Iterator[O]]]
   )(release: R => Task[Unit]
-  ): Process[Task, Process[Task, O]] = {
+  ): Process[Task, O] = {
     def createIteratorProcesses(r: R): Process[Task, Process[Task, O]] = {
       for {
         iterators <- Process.eval(createIterators(r))
         iterator <- Process.emitAll(iterators.toSeq)
       } yield Process.iterator(Task.delay(iterator))
     }
-    Process.await(acquire)(r => createIteratorProcesses(r).onComplete(Process.eval_(release(r))))
+    Process.await(acquire)(r => merge.mergeN(createIteratorProcesses(r)).onComplete(Process.eval_(release(r))))
+  }
+
+  /**
+   * Create a Process from an external resource associated with multiple
+   * iterators, while ensuring that the resource is released.
+   *
+   * Use `merge.mergeN` on the result to interleave the iterators, or
+   * .flatMap(identity) to emit them in order.
+   */
+  def iterators[R, O](
+    acquire: Task[R]
+  )(createIterators: R => Task[Iterable[Iterator[O]]]
+  )(release: R => Task[Unit]
+  ): Process[Task, O] = {
+    iterators[R, O](0)(acquire)(createIterators)(release)
   }
 }

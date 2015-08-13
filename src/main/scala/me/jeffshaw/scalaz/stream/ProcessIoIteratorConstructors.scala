@@ -2,7 +2,6 @@ package me.jeffshaw.scalaz.stream
 
 import scalaz.concurrent.Task
 import scalaz.stream._
-import me.jeffshaw.scalaz.stream.IteratorConstructors._
 
 object ProcessIoIteratorConstructors {
   /**
@@ -35,13 +34,16 @@ object ProcessIoIteratorConstructors {
   )(createIterators: R => Task[Iterable[Iterator[O]]]
   )(release: R => Task[Unit]
   ): Process[Task, O] = {
-    def createIteratorProcesses(r: R): Process[Task, Process[Task, O]] = {
+    def createIteratorProcesses(r: R): Task[Iterable[Process[Task, O]]] = {
       for {
-        iterators <- Process.eval(createIterators(r))
-        iterator <- Process.emitAll(iterators.toSeq)
-      } yield Process.iterator(Task.delay(iterator))
+        iterators <- createIterators(r)
+      } yield iterators.map(iterator => IteratorConstructors.iteratorGo(iterator))
     }
-    Process.await(acquire)(r => merge.mergeN(createIteratorProcesses(r)).onComplete(Process.eval_(release(r))))
+    Process.await(acquire) { r =>
+      merge.mergeN(maxOpen)(Process.await(createIteratorProcesses(r)) { iterators =>
+        Process.emitAll(iterators.toSeq)
+      }).onComplete(Process.eval_(release(r)))
+    }
   }
 
   /**

@@ -2,7 +2,7 @@ organization := "me.jeffshaw.scalaz.stream"
 
 name := "iterator"
 
-version := "3.0"
+version := "3.0.1"
 
 libraryDependencies ++= Seq(
   "org.scalaz.stream" %% "scalaz-stream" % "0.7.3",

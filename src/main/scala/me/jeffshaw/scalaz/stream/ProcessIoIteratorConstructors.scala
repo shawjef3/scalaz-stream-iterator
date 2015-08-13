@@ -15,9 +15,8 @@ object ProcessIoIteratorConstructors {
   )(createIterator: R => Task[Iterator[O]]
   )(release: R => Task[Unit]
   ): Process[Task, O] = {
-    Process.await(acquire)(r => Process.eval(createIterator(r)).flatMap(IteratorConstructors.iteratorGo).onComplete(Process.eval_(release(r))))
+    Process.await(acquire)(r => Process.await(createIterator(r))(IteratorConstructors.iteratorGo).onComplete(Process.eval_(release(r))))
   }
-
 
   /**
    * Create a Process from an external resource associated with multiple
@@ -60,4 +59,5 @@ object ProcessIoIteratorConstructors {
   ): Process[Task, O] = {
     iterators[R, O](0)(acquire)(createIterators)(release)
   }
+
 }

@@ -1,3 +1,5 @@
+## This project is abandoned, as its functionality can now be found in scalaz-stream 0.8.
+
 This project adds iterator constructors to scalaz.stream.Process and scalaz.stream.io. It will become deprecated if scalaz-stream merge request 416 is accepted.
 
 ```scala
